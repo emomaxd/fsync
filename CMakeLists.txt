@@ -6,14 +6,13 @@ set(CMAKE_CXX_STANDARD 17)
 
 file(GLOB_RECURSE SRC
     ${CMAKE_SOURCE_DIR}/benchmarks/*.c
-    ${CMAKE_SOURCE_DIR}/src/*.c
-    ${CMAKE_SOURCE_DIR}/src/*.h
+    ${CMAKE_SOURCE_DIR}/include/*.h
 )
 
 add_executable(fsync ${SRC})
 
 target_include_directories(fsync PRIVATE
-    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 target_link_libraries(fsync

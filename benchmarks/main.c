@@ -18,7 +18,10 @@ pthread_cond_t posix_cond;
 
 // Custom Mutex, Condition Variable, and Semaphore
 fs_mutex_t my_mutex;
+
+fs_mutex_t cv_mutex;
 fs_cond_t my_cond;
+
 fs_semaphore_t my_semaphore;
 
 // Function to get CPU cycles

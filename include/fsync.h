@@ -30,21 +30,21 @@ void fs_mutex_unlock(fs_mutex_t *mutex) {
 }
 
 typedef struct {
-    fs_mutex_t mutex;
     atomic_int waiting_count;
     atomic_int signaled_count;
 } fs_cond_t;
 
+
 void fs_cond_init(fs_cond_t *cond) {
-    fs_mutex_init(&cond->mutex);
     atomic_store(&cond->waiting_count, 0);
     atomic_store(&cond->signaled_count, 0);
 }
 
-void fs_cond_wait(fs_cond_t *cond) {
+
+void fs_cond_wait(fs_cond_t *cond, fs_mutex_t *mutex) {
     atomic_fetch_add(&cond->waiting_count, 1);
-    
-    fs_mutex_unlock(&cond->mutex);
+
+    fs_mutex_unlock(mutex);
 
     while (1) {
         if (atomic_load(&cond->signaled_count) > 0) {
@@ -55,8 +55,9 @@ void fs_cond_wait(fs_cond_t *cond) {
         sched_yield();
     }
 
-    fs_mutex_lock(&cond->mutex);
+    fs_mutex_lock(mutex);
 }
+
 
 void fs_cond_signal(fs_cond_t *cond) {
     if (atomic_load(&cond->waiting_count) > 0) {
@@ -80,22 +81,32 @@ void fs_mutex_destroy(fs_mutex_t *mutex) {
 
 typedef struct {
     fs_cond_t cond;
+    fs_mutex_t mutex;
     int count;
 } fs_semaphore_t;
 
 void fs_semaphore_init(fs_semaphore_t *sem, int initial_count) {
-    fs_cond_init(&sem->cond);
-    sem->count = initial_count;
+    fs_cond_init(&sem->cond); // Initialize the condition variable
+    fs_mutex_init(&sem->mutex); // Initialize the mutex
+    atomic_store(&sem->count, initial_count); // Initialize the count atomically
 }
+
 
 void fs_semaphore_wait(fs_semaphore_t *sem) {
-    while (sem->count <= 0) {
-        fs_cond_wait(&sem->cond);
+    fs_mutex_lock(&sem->mutex); // Lock the mutex
+
+    while (atomic_load(&sem->count) <= 0) { // Check if count is zero or negative
+        fs_cond_wait(&sem->cond, &sem->mutex); // Wait and release the mutex
     }
-    sem->count--;
+
+    atomic_fetch_sub(&sem->count, 1); // Decrement the count atomically
+    fs_mutex_unlock(&sem->mutex); // Unlock the mutex
 }
 
+
 void fs_semaphore_signal(fs_semaphore_t *sem) {
-    ++sem->count;
-    fs_cond_signal(&sem->cond);
+    fs_mutex_lock(&sem->mutex); // Lock the mutex
+    atomic_fetch_add(&sem->count, 1); // Increment the count atomically
+    fs_cond_signal(&sem->cond); // Signal the condition variable
+    fs_mutex_unlock(&sem->mutex); // Unlock the mutex
 }
